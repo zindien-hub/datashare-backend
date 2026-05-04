@@ -13,3 +13,11 @@ spring:
   sql:
     init:
       mode: never
+
+jwt:
+  secret: test-secret-key-at-least-32-characters-long
+  expiration-ms: 3600000
+
+app:
+  file-storage:
+    upload-dir: target/test-uploads
