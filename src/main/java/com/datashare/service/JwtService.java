@@ -1,5 +1,6 @@
 package com.datashare.service;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
@@ -10,7 +11,7 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
-// Service de génération des tokens JWT.
+// Service de génération et validation des tokens JWT.
 @Service
 public class JwtService {
 
@@ -39,5 +40,24 @@ public class JwtService {
                 .expiration(expiryDate)
                 .signWith(secretKey)
                 .compact();
+    }
+
+    // Extrait l'email contenu dans le token.
+    public String extractUsername(String token) {
+        return extractAllClaims(token).getSubject();
+    }
+
+    // Vérifie si le token est encore valide.
+    public boolean isTokenValid(String token) {
+        return !extractAllClaims(token).getExpiration().before(new Date());
+    }
+
+    // Extrait l'ensemble des claims du token.
+    private Claims extractAllClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }
