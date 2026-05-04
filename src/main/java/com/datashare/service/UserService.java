@@ -15,6 +15,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     // Crée un nouvel utilisateur si l'email n'existe pas déjà.
     public void register(RegisterRequest request) {
@@ -29,7 +30,7 @@ public class UserService {
         userRepository.save(user);
     }
 
-    // Vérifie les identifiants puis renvoie une réponse d'authentification.
+    // Vérifie les identifiants puis renvoie un JWT.
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
@@ -40,7 +41,7 @@ public class UserService {
             throw new IllegalArgumentException("Invalid credentials");
         }
 
-        // todo: Remplacer ce token temporaire par un vrai JWT.
-        return new LoginResponse("temporary-token");
+        String token = jwtService.generateToken(user.getEmail());
+        return new LoginResponse(token);
     }
 }
