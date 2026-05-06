@@ -1,6 +1,7 @@
 package com.datashare.service;
 
 import com.datashare.dto.file.FileUploadResponse;
+import com.datashare.dto.file.FileListItemResponse;
 import com.datashare.entities.SharedFile;
 import com.datashare.entities.User;
 import com.datashare.repository.SharedFileRepository;
@@ -13,6 +14,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.List;
+
 
 @Service
 @RequiredArgsConstructor
@@ -54,5 +57,26 @@ public class FileService {
                 "/download/" + saved.getDownloadToken(),
                 saved.getExpiresAt()
         );
+    }
+
+    // Retourne l'historique des fichiers de l'utilisateur connecté.
+    public List<FileListItemResponse> getUserFiles(Authentication authentication) {
+        String email = authentication.getName();
+
+        User owner = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Authenticated user not found"));
+
+        return sharedFileRepository.findByOwnerOrderByCreatedAtDesc(owner)
+                .stream()
+                .map(file -> new FileListItemResponse(
+                        file.getId(),
+                        file.getOriginalName(),
+                        file.getContentType(),
+                        file.getSize(),
+                        file.getDownloadToken(),
+                        "/download/" + file.getDownloadToken(),
+                        file.getExpiresAt(),
+                        file.getCreatedAt()))
+                .toList();
     }
 }
