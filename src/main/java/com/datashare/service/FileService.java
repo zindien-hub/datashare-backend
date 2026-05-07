@@ -114,4 +114,22 @@ public class FileService {
                         file.getOriginalName(),
                         contentType);
     }
+
+    // Supprime un fichier appartenant à l'utilisateur authentifié.
+    public void deleteFile(Long fileId, Authentication authentication) throws IOException {
+        String email = authentication.getName();
+
+        User owner = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Authenticated user not found"));
+
+        SharedFile file = sharedFileRepository.findById(fileId)
+                .orElseThrow(() -> new IllegalArgumentException("File not found"));
+
+        if (!file.getOwner().getId().equals(owner.getId())) {
+                throw new IllegalArgumentException("You are not allowed to delete this file");
+        }
+
+        fileStorageService.delete(file.getStoredName());
+        sharedFileRepository.delete(file);
+        }
 }

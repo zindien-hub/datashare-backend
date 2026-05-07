@@ -24,8 +24,7 @@ public class FileController {
     @PostMapping(consumes = "multipart/form-data")
     public ResponseEntity<FileUploadResponse> upload(
             @RequestParam("file") MultipartFile file,
-            Authentication authentication
-    ) throws IOException {
+            Authentication authentication) throws IOException {
         FileUploadResponse response = fileService.upload(file, authentication);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -35,5 +34,14 @@ public class FileController {
     public ResponseEntity<List<FileListItemResponse>> getMyFiles(Authentication authentication) {
         List<FileListItemResponse> response = fileService.getUserFiles(authentication);
         return ResponseEntity.ok(response);
+    }
+
+    // Supprime un fichier appartenant à l'utilisateur authentifié.
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteFile(
+            @PathVariable Long id,
+            Authentication authentication) throws IOException {
+        fileService.deleteFile(id, authentication);
+        return ResponseEntity.noContent().build();
     }
 }

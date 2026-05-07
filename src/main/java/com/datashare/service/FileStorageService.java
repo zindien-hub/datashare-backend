@@ -40,4 +40,10 @@ public class FileStorageService {
         Path filePath = uploadPath.resolve(storedName).normalize();
         return new UrlResource(filePath.toUri());
     }
+
+    // Supprime un fichier du stockage local.
+    public void delete(String storedName) throws IOException {
+    Path target = uploadPath.resolve(storedName).normalize();
+    Files.deleteIfExists(target); 
+    }
 }
