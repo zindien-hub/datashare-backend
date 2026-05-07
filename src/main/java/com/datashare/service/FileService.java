@@ -10,11 +10,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.io.Resource;
+import org.springframework.http.MediaType;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.List;
+
+import java.net.MalformedURLException;
 
 
 @Service
@@ -78,5 +82,36 @@ public class FileService {
                         file.getExpiresAt(),
                         file.getCreatedAt()))
                 .toList();
+    }
+
+    public static record FileDownloadData(
+        Resource resource,
+        String originalName,
+        String contentType) {
+    }
+
+    // Retourne les informations nécessaires au téléchargement public d'un fichier.
+    public FileDownloadData downloadByToken(String token) throws MalformedURLException {
+        SharedFile file = sharedFileRepository.findByDownloadToken(token)
+                        .orElseThrow(() -> new IllegalArgumentException("File not found"));
+
+        if (file.getExpiresAt().isBefore(LocalDateTime.now())) {
+                throw new IllegalArgumentException("Download link has expired");
+        }
+
+        Resource resource = fileStorageService.loadAsResource(file.getStoredName());
+
+        if (!resource.exists() || !resource.isReadable()) {
+                throw new IllegalArgumentException("Stored file is not available");
+        }
+
+        String contentType = file.getContentType() != null
+                        ? file.getContentType()
+                        : MediaType.APPLICATION_OCTET_STREAM_VALUE;
+
+        return new FileDownloadData(
+                        resource,
+                        file.getOriginalName(),
+                        contentType);
     }
 }
