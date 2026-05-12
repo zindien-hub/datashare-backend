@@ -164,7 +164,14 @@ Les endpoints principaux exposés par le backend sont :
 
 - `GET /download/{token}`
 
-Une spécification OpenAPI dédiée documente ces endpoints dans :
+Une documentation OpenAPI est exposée dynamiquement par le backend via springdoc-openapi.
+
+Elle est accessible localement via :
+- `/v3/api-docs`
+- `/v3/api-docs.yaml`
+- `/swagger-ui/index.html`
+
+Un fichier documentaire est également conservé dans :
 - `docs/openapi.yaml`
 
 ## 5. Sécurité et gestion des accès
