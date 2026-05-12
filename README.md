@@ -12,7 +12,8 @@ Il gère :
 - le téléchargement public via un token ;
 - la suppression des fichiers par leur propriétaire ;
 - la persistance PostgreSQL ;
-- le stockage local des fichiers uploadés.
+- le stockage local des fichiers uploadés ;
+- la documentation OpenAPI générée via springdoc.
 
 ## Stack technique
 
@@ -24,6 +25,7 @@ Il gère :
 - PostgreSQL
 - Docker Compose
 - Lombok
+- springdoc-openapi
 
 ## Pré-requis
 
@@ -126,6 +128,20 @@ Le répertoire `uploads/` n’est pas versionné dans Git car il contient des fi
 
 - `GET /download/{token}` : téléchargement public d’un fichier via son token
 
+## Documentation API
+
+La documentation OpenAPI est générée dynamiquement via springdoc-openapi.
+
+Elle est accessible localement via :
+
+- `http://localhost:8080/swagger-ui/index.html`
+- `http://localhost:8080/v3/api-docs`
+- `http://localhost:8080/v3/api-docs.yaml`
+
+Un fichier documentaire complémentaire peut également être conservé dans :
+
+- `docs/openapi.yaml`
+
 ## Sécurité
 
 - authentification par JWT ;
@@ -133,6 +149,8 @@ Le répertoire `uploads/` n’est pas versionné dans Git car il contient des fi
 - routes `/api/auth/**` et `/download/**` publiques ;
 - routes `/api/files/**` protégées ;
 - suppression limitée au propriétaire du fichier.
+- validation des uploads avec contrôle du type et de la taille ;
+- réponses d’erreur homogènes via un gestionnaire global d’exceptions.
 
 ## Tests
 
@@ -146,18 +164,32 @@ Le projet utilise :
 
 - un profil test dédié ;
 - une base H2 en mémoire pour les tests ;
-- une configuration distincte pour éviter de dépendre de PostgreSQL local.
+- une configuration distincte pour éviter de dépendre de PostgreSQL local;
+- JaCoCo pour la couverture ;
+- des tests unitaires et d’intégration backend.
+
+## État actuel
+35 tests backend au vert ;
+couverture JaCoCo backend : 74 % d’instructions.
+
+Le rapport JaCoCo est généré dans :
+```bash
+target/site/jacoco/index.html
+```
 
 ## Structure du projet
 
 ```bash
 src/main/java/com/datashare/
-  configuration/security/
+  configuration/
+    security/
   controller/
   dto/
     auth/
+    common/
     file/
   entities/
+  exception/
   repository/
   service/
 ```
