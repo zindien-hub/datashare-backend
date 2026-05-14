@@ -4,8 +4,10 @@ import com.datashare.dto.auth.LoginRequest;
 import com.datashare.dto.auth.LoginResponse;
 import com.datashare.dto.auth.RegisterRequest;
 import com.datashare.entities.User;
+import com.datashare.exception.BadRequestException;
 import com.datashare.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -20,7 +22,7 @@ public class UserService {
     // Crée un nouvel utilisateur si l'email n'existe pas déjà.
     public void register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.email())) {
-            throw new IllegalArgumentException("Email already exists");
+            throw new BadRequestException("Email already exists");
         }
 
         User user = new User();
@@ -33,12 +35,12 @@ public class UserService {
     // Vérifie les identifiants puis renvoie un JWT.
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
+                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
         boolean passwordMatches = passwordEncoder.matches(request.password(), user.getPasswordHash());
 
         if (!passwordMatches) {
-            throw new IllegalArgumentException("Invalid credentials");
+            throw new BadCredentialsException("Invalid credentials");
         }
 
         String token = jwtService.generateToken(user.getEmail());
