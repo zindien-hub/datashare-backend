@@ -11,6 +11,7 @@ import com.datashare.exception.NotFoundException;
 import com.datashare.repository.SharedFileRepository;
 import com.datashare.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
@@ -25,6 +26,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FileService {
@@ -34,16 +36,21 @@ public class FileService {
     private final FileStorageService fileStorageService;
     private final FileUploadProperties fileUploadProperties;
 
-    // Gère l'upload du fichier, son stockage local et la persistance des métadonnées.
-    public FileUploadResponse upload(MultipartFile file, Authentication authentication) throws IOException {
-        validateUpload(file);
+    public FileUploadResponse upload(MultipartFile file, Authentication authentication)
+            throws IOException {
 
         String email = authentication.getName();
+
+        validateUpload(file);
 
         User owner = userRepository.findByEmail(email)
                 .orElseThrow(() -> new NotFoundException("Authenticated user not found"));
 
         String sanitizedFilename = sanitizeFilename(file.getOriginalFilename());
+
+        log.info("Upload démarré — user: {}, fichier: '{}', taille: {} octets",
+                email, sanitizedFilename, file.getSize());
+
         String storedName = buildStoredFilename(sanitizedFilename);
         String downloadToken = UUID.randomUUID().toString();
         LocalDateTime expiresAt = LocalDateTime.now().plusDays(7);
@@ -61,6 +68,9 @@ public class FileService {
 
         SharedFile saved = sharedFileRepository.save(sharedFile);
 
+        log.info("Upload réussi — ID: {}, fichier: '{}', expire: {}",
+                saved.getId(), saved.getOriginalName(), saved.getExpiresAt());
+
         return new FileUploadResponse(
                 saved.getId(),
                 saved.getOriginalName(),
@@ -70,14 +80,14 @@ public class FileService {
         );
     }
 
-    // Retourne l'historique des fichiers de l'utilisateur connecté.
     public List<FileListItemResponse> getUserFiles(Authentication authentication) {
         String email = authentication.getName();
 
         User owner = userRepository.findByEmail(email)
                 .orElseThrow(() -> new NotFoundException("Authenticated user not found"));
 
-        return sharedFileRepository.findByOwnerOrderByCreatedAtDesc(owner)
+        List<FileListItemResponse> files = sharedFileRepository
+                .findByOwnerOrderByCreatedAtDesc(owner)
                 .stream()
                 .map(file -> new FileListItemResponse(
                         file.getId(),
@@ -90,6 +100,11 @@ public class FileService {
                         file.getCreatedAt()
                 ))
                 .toList();
+
+        log.info("Liste fichiers — user: {}, {} fichier(s)",
+                email, files.size());
+
+        return files;
     }
 
     public static record FileDownloadData(
@@ -98,18 +113,24 @@ public class FileService {
             String contentType) {
     }
 
-    // Retourne les informations nécessaires au téléchargement public d'un fichier.
     public FileDownloadData downloadByToken(String token) throws MalformedURLException {
         SharedFile file = sharedFileRepository.findByDownloadToken(token)
-                .orElseThrow(() -> new NotFoundException("File not found"));
+                .orElseThrow(() -> {
+                    log.warn("Download refusé — token inconnu");
+                    return new NotFoundException("File not found");
+                });
 
         if (file.getExpiresAt().isBefore(LocalDateTime.now())) {
+            log.info("Download refusé — lien expiré: '{}' (expiré le {})",
+                    file.getOriginalName(), file.getExpiresAt());
             throw new BadRequestException("Download link has expired");
         }
 
         Resource resource = fileStorageService.loadAsResource(file.getStoredName());
 
         if (!resource.exists() || !resource.isReadable()) {
+            log.error("Fichier physique absent — storedName: '{}', ID: {}",
+                    file.getStoredName(), file.getId());
             throw new NotFoundException("Stored file is not available");
         }
 
@@ -117,13 +138,12 @@ public class FileService {
                 ? file.getContentType()
                 : MediaType.APPLICATION_OCTET_STREAM_VALUE;
 
-        return new FileDownloadData(
-                resource,
-                file.getOriginalName(),
-                contentType);
+        log.info("Download autorisé — fichier: '{}', {} octets",
+                file.getOriginalName(), file.getSize());
+
+        return new FileDownloadData(resource, file.getOriginalName(), contentType);
     }
 
-    // Supprime un fichier appartenant à l'utilisateur authentifié.
     public void deleteFile(Long fileId, Authentication authentication) throws IOException {
         String email = authentication.getName();
 
@@ -134,45 +154,62 @@ public class FileService {
                 .orElseThrow(() -> new NotFoundException("File not found"));
 
         if (!file.getOwner().getId().equals(owner.getId())) {
+            log.warn("SECURITE — Suppression non autorisée : fichier ID={} (proprio: '{}') par '{}'",
+                    fileId, file.getOwner().getEmail(), email);
             throw new ForbiddenException("You are not allowed to delete this file");
         }
 
         fileStorageService.delete(file.getStoredName());
         sharedFileRepository.delete(file);
+
+        log.info("Fichier supprimé — ID: {}, fichier: '{}', par: {}",
+                fileId, file.getOriginalName(), email);
     }
 
-    // Valide les contraintes d'upload.
     private void validateUpload(MultipartFile file) {
         if (file == null || file.isEmpty()) {
+            log.warn("Upload refusé — fichier vide");
             throw new BadRequestException("Uploaded file is empty");
         }
 
         if (file.getSize() > fileUploadProperties.getMaxSizeBytes()) {
+            log.warn("Upload refusé — taille {} octets dépasse la limite {} octets",
+                    file.getSize(),
+                    fileUploadProperties.getMaxSizeBytes());
             throw new BadRequestException("File size exceeds the allowed limit");
         }
 
         String contentType = file.getContentType();
         if (contentType == null || !fileUploadProperties.getAllowedContentTypes().contains(contentType)) {
+            log.warn("Upload refusé — type '{}' non autorisé. Types acceptés : {}",
+                    contentType,
+                    fileUploadProperties.getAllowedContentTypes());
             throw new BadRequestException("File type is not allowed");
         }
     }
 
-    // Nettoie et sécurise le nom de fichier fourni par l'utilisateur.
     private String sanitizeFilename(String originalFilename) {
-        String cleaned = StringUtils.cleanPath(originalFilename == null ? "" : originalFilename).trim();
+        String cleaned = StringUtils.cleanPath(
+                originalFilename == null ? "" : originalFilename
+        ).trim();
 
         if (cleaned.isBlank()) {
             throw new BadRequestException("Filename is invalid");
         }
-
         if (cleaned.contains("..")) {
             throw new BadRequestException("Filename contains invalid path sequence");
         }
 
-        return Paths.get(cleaned).getFileName().toString();
+        String filenameOnly = Paths.get(cleaned).getFileName().toString();
+        String safeName = filenameOnly.replaceAll("[^a-zA-Z0-9._\\-]", "_");
+
+        if (safeName.isBlank() || safeName.equals("_")) {
+            throw new BadRequestException("Filename is invalid after sanitization");
+        }
+
+        return safeName;
     }
 
-    // Génère un nom de fichier stocké unique.
     private String buildStoredFilename(String sanitizedFilename) {
         return UUID.randomUUID() + "_" + sanitizedFilename;
     }

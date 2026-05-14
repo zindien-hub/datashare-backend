@@ -27,6 +27,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -176,6 +177,83 @@ class FileServiceTest {
     }
 
     @Test
+    void shouldSanitizeFilenameWithSpecialCharacters() throws Exception {
+        User user = buildUser(1L, "test@datashare.com");
+
+        when(authentication.getName()).thenReturn("test@datashare.com");
+        when(userRepository.findByEmail("test@datashare.com")).thenReturn(Optional.of(user));
+
+        when(multipartFile.isEmpty()).thenReturn(false);
+        when(multipartFile.getSize()).thenReturn(100L);
+        when(multipartFile.getContentType()).thenReturn("text/plain");
+        when(multipartFile.getOriginalFilename()).thenReturn("mon rapport (v2).pdf");
+
+        when(sharedFileRepository.save(any(SharedFile.class))).thenAnswer(invocation -> {
+            SharedFile f = invocation.getArgument(0);
+            f.setId(1L);
+            return f;
+        });
+
+        fileService.upload(multipartFile, authentication);
+
+        ArgumentCaptor<SharedFile> captor = ArgumentCaptor.forClass(SharedFile.class);
+        verify(sharedFileRepository).save(captor.capture());
+
+        String savedName = captor.getValue().getOriginalName();
+
+        assertFalse(savedName.contains(" "),  "Les espaces doivent être remplacés par _");
+        assertFalse(savedName.contains("("),  "Les ( doivent être remplacées par _");
+        assertFalse(savedName.contains(")"),  "Les ) doivent être remplacées par _");
+
+        assertEquals("mon_rapport__v2_.pdf", savedName);
+        assertTrue(captor.getValue().getStoredName().endsWith("_mon_rapport__v2_.pdf"));
+    }
+
+    @Test
+    void shouldRejectFilenameReducedToSingleUnderscore() throws Exception {
+        User user = buildUser(1L, "test@datashare.com");
+
+        when(authentication.getName()).thenReturn("test@datashare.com");
+        when(userRepository.findByEmail("test@datashare.com")).thenReturn(Optional.of(user));
+
+        when(multipartFile.isEmpty()).thenReturn(false);
+        when(multipartFile.getSize()).thenReturn(100L);
+        when(multipartFile.getContentType()).thenReturn("text/plain");
+        when(multipartFile.getOriginalFilename()).thenReturn("!");
+
+        BadRequestException exception = assertThrows(
+                BadRequestException.class,
+                () -> fileService.upload(multipartFile, authentication)
+        );
+
+        assertEquals("Filename is invalid after sanitization", exception.getMessage());
+        verify(fileStorageService, never()).store(any(), anyString());
+        verify(sharedFileRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldRejectNullFilename() throws Exception {
+        User user = buildUser(1L, "test@datashare.com");
+
+        when(authentication.getName()).thenReturn("test@datashare.com");
+        when(userRepository.findByEmail("test@datashare.com")).thenReturn(Optional.of(user));
+
+        when(multipartFile.isEmpty()).thenReturn(false);
+        when(multipartFile.getSize()).thenReturn(100L);
+        when(multipartFile.getContentType()).thenReturn("text/plain");
+        when(multipartFile.getOriginalFilename()).thenReturn(null);
+
+        BadRequestException exception = assertThrows(
+                BadRequestException.class,
+                () -> fileService.upload(multipartFile, authentication)
+        );
+
+        assertEquals("Filename is invalid", exception.getMessage());
+        verify(fileStorageService, never()).store(any(), anyString());
+        verify(sharedFileRepository, never()).save(any());
+    }
+
+    @Test
     void shouldReturnUserFiles() {
         User user = buildUser(1L, "test@datashare.com");
 
@@ -189,7 +267,8 @@ class FileServiceTest {
 
         when(authentication.getName()).thenReturn("test@datashare.com");
         when(userRepository.findByEmail("test@datashare.com")).thenReturn(Optional.of(user));
-        when(sharedFileRepository.findByOwnerOrderByCreatedAtDesc(user)).thenReturn(List.of(file1, file2));
+        when(sharedFileRepository.findByOwnerOrderByCreatedAtDesc(user))
+                .thenReturn(List.of(file1, file2));
 
         List<FileListItemResponse> result = fileService.getUserFiles(authentication);
 
@@ -315,7 +394,10 @@ class FileServiceTest {
         return user;
     }
 
-    private SharedFile buildSharedFile(Long id, String originalName, String contentType, Long size, String token) {
+    private SharedFile buildSharedFile(
+            Long id, String originalName, String contentType,
+            Long size, String token) {
+
         SharedFile file = new SharedFile();
         file.setId(id);
         file.setOriginalName(originalName);

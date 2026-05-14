@@ -4,6 +4,7 @@ import com.datashare.dto.common.ErrorResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -75,7 +76,7 @@ class GlobalExceptionHandlerTest {
 
         assertEquals(400, response.getStatusCode().value());
         assertNotNull(response.getBody());
-        assertEquals("Email is required", response.getBody().message());
+        assertEquals("email: Email is required", response.getBody().message());
         assertEquals(400, response.getBody().status());
         assertNotNull(response.getBody().timestamp());
     }
@@ -107,6 +108,18 @@ class GlobalExceptionHandlerTest {
         assertNotNull(response.getBody());
         assertEquals("Internal server error", response.getBody().message());
         assertEquals(500, response.getBody().status());
+        assertNotNull(response.getBody().timestamp());
+    }
+
+    @Test
+    void shouldHandleBadCredentialsException() {
+        ResponseEntity<ErrorResponse> response = handler.handleBadCredentials(
+                new BadCredentialsException("Invalid credentials"));
+
+        assertEquals(401, response.getStatusCode().value());
+        assertNotNull(response.getBody());
+        assertEquals("Invalid credentials", response.getBody().message());
+        assertEquals(401, response.getBody().status());
         assertNotNull(response.getBody().timestamp());
     }
 }
