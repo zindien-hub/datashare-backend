@@ -35,3 +35,5 @@ app:
       - image/jpeg
       - application/pdf
       - text/plain
+  cleanup:
+    expired-files-cron: "0 0 * * * *"
