@@ -1,19 +1,20 @@
 package com.datashare.service;
 
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import java.net.MalformedURLException;
-
+@Slf4j
 @Service
 public class FileStorageService {
 
@@ -22,28 +23,44 @@ public class FileStorageService {
 
     private Path uploadPath;
 
-    // Initialise le répertoire de stockage local.
     @PostConstruct
     void init() throws IOException {
         this.uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
         Files.createDirectories(this.uploadPath);
+        log.info("Répertoire de stockage initialisé : {}", this.uploadPath);
     }
 
-    // Sauvegarde physiquement le fichier sur disque.
     public void store(MultipartFile file, String storedName) throws IOException {
-        Path target = uploadPath.resolve(storedName);
+        Path target = resolveSecure(storedName);
         file.transferTo(target);
+        log.info("Fichier stocké : '{}', taille : {} octets", storedName, file.getSize());
     }
 
-    // Charge un fichier stocké sur disque sous forme de ressource lisible.
     public Resource loadAsResource(String storedName) throws MalformedURLException {
-        Path filePath = uploadPath.resolve(storedName).normalize();
+        Path filePath = resolveSecure(storedName);
+        log.debug("Chargement ressource : '{}'", storedName);
         return new UrlResource(filePath.toUri());
     }
 
-    // Supprime un fichier du stockage local.
     public void delete(String storedName) throws IOException {
-    Path target = uploadPath.resolve(storedName).normalize();
-    Files.deleteIfExists(target); 
+        Path target = resolveSecure(storedName);
+        boolean deleted = Files.deleteIfExists(target);
+
+        if (deleted) {
+            log.info("Fichier supprimé physiquement : '{}'", storedName);
+        } else {
+            log.warn("Fichier physique introuvable lors de la suppression : '{}'", storedName);
+        }
+    }
+
+    private Path resolveSecure(String storedName) {
+        Path resolved = uploadPath.resolve(storedName).normalize();
+
+        if (!resolved.startsWith(uploadPath)) {
+            log.error("SECURITE — Accès hors répertoire détecté : storedName='{}'", storedName);
+            throw new IllegalArgumentException("Nom de fichier non autorisé : " + storedName);
+        }
+
+        return resolved;
     }
 }
