@@ -74,6 +74,8 @@ Le frontend a été développé avec Angular pour bénéficier :
 
 Angular est adapté à un projet de type application métier avec plusieurs écrans protégés et une logique de navigation claire.
 
+Le frontend utilise un routage avec chargement différé des pages principales et une gestion d’état réactive sur les écrans critiques, afin de limiter le poids initial du bundle et de fiabiliser le rendu après opérations asynchrones.
+
 ### Base de données : PostgreSQL
 
 PostgreSQL a été retenu comme base relationnelle principale car il est :
@@ -106,8 +108,9 @@ Les outils retenus sont :
 - Maven et Spring Boot Test côté backend ;
 - H2 pour les tests backend ;
 - JaCoCo pour la couverture backend ;
-- Vitest côté frontend ;
 - k6 pour les mesures de performance backend ;
+- Angular TestBed pour les tests unitaires frontend ;
+- Cypress pour les tests end-to-end frontend ;
 - Lighthouse pour les audits de performance frontend.
 
 ## 3. Modèle de données
@@ -223,7 +226,7 @@ Le projet s’appuie sur plusieurs documents dédiés :
 
 À ce stade :
 - le backend dispose d’un ensemble de tests unitaires et d’intégration couvrant les services, les contrôleurs, la sécurité et la gestion des erreurs ;
-- le frontend dispose de tests automatisés sur le socle d’authentification et de validations manuelles sur les parcours critiques ;
+- le frontend dispose de tests unitaires sur le socle applicatif, de tests end-to-end Cypress sur les parcours critiques et de validations manuelles complémentaires ;
 - les parcours critiques ont été validés manuellement côté frontend et backend.
 
 ### Performance
