@@ -99,6 +99,9 @@ Le backend utilise PostgreSQL.
 Le conteneur est défini dans `compose.yaml`.
 Les données sont persistées dans un volume Docker dédié.
 
+Le schéma est géré par **Flyway** via des migrations SQL versionnées.
+Hibernate est configuré en mode validation du schéma.
+
 ## Stockage local des fichiers
 
 Les fichiers uploadés sont stockés dans le répertoire défini par la variable `UPLOAD_DIR`.
@@ -148,9 +151,11 @@ Un fichier documentaire complémentaire peut également être conservé dans :
 - mots de passe stockés hashés avec BCrypt ;
 - routes `/api/auth/**` et `/download/**` publiques ;
 - routes `/api/files/**` protégées ;
-- suppression limitée au propriétaire du fichier.
+- suppression limitée au propriétaire du fichier ;
 - validation des uploads avec contrôle du type et de la taille ;
-- réponses d’erreur homogènes via un gestionnaire global d’exceptions.
+- réponses d’erreur homogènes via un gestionnaire global d’exceptions ;
+- expiration des liens de téléchargement après 7 jours ;
+- purge planifiée des fichiers expirés pour maintenir la cohérence entre base et stockage local.
 
 ## Tests
 
@@ -169,8 +174,9 @@ Le projet utilise :
 - des tests unitaires et d’intégration backend.
 
 ## État actuel
-35 tests backend au vert ;
-couverture JaCoCo backend : 74 % d’instructions.
+
+- tests backend au vert ;
+- couverture JaCoCo backend supérieure au seuil minimal visé sur les instructions.
 
 Le rapport JaCoCo est généré dans :
 ```bash

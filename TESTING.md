@@ -59,6 +59,7 @@ Les composants suivants sont couverts par des tests unitaires :
 
 - `JwtService`
 - `FileService`
+- `ExpiredFileCleanupService`
 - `GlobalExceptionHandler`
 - `AuthController`
 - `FileController`
@@ -83,7 +84,7 @@ La commande suivante passe avec succès :
 
 Résultat observé :
 
-- **35 tests backend au vert**
+- **42 tests backend au vert**
 - **0 échec**
 - **0 erreur**
 - **0 test ignoré**
@@ -92,8 +93,8 @@ Résultat observé :
 
 Le backend atteint actuellement :
 
-- **74 % de couverture d’instructions**
-- **52 % de couverture de branches**
+- **76 % de couverture d’instructions**
+- **58 % de couverture de branches**
 
 Cela permet de dépasser le seuil minimal visé de **70 % sur les instructions**.
 
@@ -116,8 +117,9 @@ Les principales marges de progression se situent sur :
 
 - `com.datashare.service`
 - `com.datashare.configuration.security`
+- `com.datashare.entities`
 
-La couverture de branches reste aussi perfectible, ce qui montre que tous les scénarios conditionnels ne sont pas encore exercés.
+La couverture de branches reste perfectible, ce qui montre que tous les scénarios conditionnels ne sont pas encore exercés.
 
 ### Cas particulier des entités
 
@@ -170,6 +172,12 @@ Les scénarios suivants ont été validés manuellement sur le backend :
     - rejet d’un fichier vide
     - rejet d’un type de fichier non autorisé
     - retour d’une réponse JSON homogène en cas d’erreur
+
+### 8. Purge des fichiers expirés
+- création d’un fichier expiré en base ;
+- exécution du job planifié de purge ;
+- suppression vérifiée en base PostgreSQL ;
+- suppression vérifiée dans le répertoire local d’upload.
 
 ## Vérifications techniques complémentaires
 
