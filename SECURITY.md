@@ -85,6 +85,9 @@ Le backend vérifie :
 - la disponibilité du fichier ;
 - l’expiration du lien avant de servir le contenu.
 
+Les liens expirent après 7 jours.
+Un job planifié supprime ensuite les fichiers expirés du disque et de la base afin de limiter l’accumulation de données obsolètes.
+
 ## Configuration et secrets
 
 Les paramètres sensibles ne sont pas codés en dur dans le projet.
@@ -108,9 +111,12 @@ Les vérifications suivantes ont été réalisées pendant le développement :
 
 - validation de la création d’utilisateur avec mot de passe hashé en base ;
 - validation de la génération d’un JWT à la connexion ;
+- validation du retour HTTP 401 en cas d’identifiants invalides ;
 - validation de l’accès protégé aux routes `/api/files/**` ;
 - validation du téléchargement public par token ;
-- validation du contrôle de propriété sur la suppression.
+- validation de l’expiration des liens de téléchargement ;
+- validation du contrôle de propriété sur la suppression ;
+- validation de la purge planifiée des fichiers expirés.
 
 ## Limites actuelles
 
@@ -120,7 +126,7 @@ Les vérifications suivantes ont été réalisées pendant le développement :
 - absence de gestion de rôles avancée ;
 - absence de limitation de débit sur les endpoints sensibles ;
 - absence de protection supplémentaire par mot de passe sur les fichiers partagés ;
-- absence de journalisation de sécurité avancée.
+- observabilité encore limitée : les logs applicatifs ont été renforcés, mais il n’y a pas encore de journalisation structurée complète, ni de corrélation avancée de traces.
 
 ## Améliorations prévues
 

@@ -26,7 +26,9 @@ Le backend Spring Boot est responsable :
 - de la logique métier autour des fichiers ;
 - de la persistance en base PostgreSQL ;
 - du stockage local des fichiers ;
-- de l’exposition des endpoints REST.
+- de l’exposition des endpoints REST;
+- de l’exécution des migrations de base de données via Flyway ;
+- de la purge planifiée des fichiers expirés ;
 
 ### Base de données
 
@@ -103,8 +105,10 @@ Docker Compose est utilisé pour simplifier le démarrage local de PostgreSQL et
 Les outils retenus sont :
 - Maven et Spring Boot Test côté backend ;
 - H2 pour les tests backend ;
+- JaCoCo pour la couverture backend ;
 - Vitest côté frontend ;
-- k6 pour une première mesure de performance backend.
+- k6 pour les mesures de performance backend ;
+- Lighthouse pour les audits de performance frontend.
 
 ## 3. Modèle de données
 
@@ -218,9 +222,9 @@ Le projet s’appuie sur plusieurs documents dédiés :
 ### Tests
 
 À ce stade :
-- le backend dispose d’un socle de tests automatisés minimal ;
-- le frontend dispose de tests automatisés sur le socle d’authentification ;
-- les parcours critiques ont été validés manuellement.
+- le backend dispose d’un ensemble de tests unitaires et d’intégration couvrant les services, les contrôleurs, la sécurité et la gestion des erreurs ;
+- le frontend dispose de tests automatisés sur le socle d’authentification et de validations manuelles sur les parcours critiques ;
+- les parcours critiques ont été validés manuellement côté frontend et backend.
 
 ### Performance
 
@@ -266,7 +270,8 @@ ng serve
 
 ### Environnement
 
-Le frontend attend un backend accessible en local sur `http://localhost:8080`.
+En développement local, le frontend communique avec le backend via le proxy Angular.
+La configuration de production repose sur des chemins relatifs, afin d’éviter toute dépendance à une URL `localhost` codée en dur.
 
 Les instructions détaillées sont disponibles dans :
 - `README.md` du repo backend
@@ -293,11 +298,11 @@ L’IA a été utilisée comme outil d’assistance, et non comme mécanisme d�
 Le projet est actuellement un MVP fonctionnel.
 Les principales limites identifiées sont :
 
-- couverture de tests encore insuffisante ;
-- gestion des erreurs à homogénéiser davantage ;
-- sécurité à renforcer sur certains aspects ;
-- architecture de stockage volontairement simple ;
-- validations d’upload encore perfectibles.
+- la couverture de branches backend reste perfectible ;
+- les tests frontend restent plus limités que les tests backend ;
+- l’observabilité reste encore partielle ;
+- l’architecture de stockage reste volontairement simple pour un MVP ;
+- les performances mobiles du frontend restent en retrait par rapport au desktop.
 
 Les évolutions possibles incluent :
 
