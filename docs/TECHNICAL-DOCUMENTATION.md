@@ -15,6 +15,8 @@ Le frontend Angular est responsable :
 - de l’interface utilisateur ;
 - de la navigation entre les pages ;
 - de l’authentification côté client ;
+- de la protection des routes ;
+- de la gestion de la session côté navigateur ;
 - de l’appel aux endpoints REST du backend ;
 - de l’affichage des fichiers, de l’historique et des actions utilisateur.
 
@@ -109,9 +111,12 @@ Les outils retenus sont :
 - H2 pour les tests backend ;
 - JaCoCo pour la couverture backend ;
 - k6 pour les mesures de performance backend ;
-- Angular TestBed pour les tests unitaires frontend ;
+- Angular TestBed avec exécution via Vitest côté frontend ;
 - Cypress pour les tests end-to-end frontend ;
 - Lighthouse pour les audits de performance frontend.
+
+Côté frontend, Angular 21 s’appuie sur Vitest pour l’exécution des tests unitaires.
+Les tests utilisent `TestBed` pour l’intégration avec l’écosystème Angular, tandis que l’exécution et la couverture sont réalisées via `ng test` et le moteur Vitest/V8.
 
 ## 3. Modèle de données
 
@@ -208,7 +213,10 @@ Certaines opérations métier sont soumises à une vérification de propriété,
 
 Côté frontend :
 - un guard protège les routes privées ;
-- un interceptor injecte automatiquement le JWT dans les appels API protégés.
+- un interceptor injecte automatiquement le JWT dans les appels API protégés ;
+- une réponse `401` hors endpoints publics entraîne la suppression de la session locale ;
+- l’utilisateur est redirigé vers `/login` avec conservation de la route d’origine ;
+- un message explicatif est affiché lorsque la session a expiré.
 
 Les détails sont documentés dans :
 - `SECURITY.md`
@@ -226,7 +234,8 @@ Le projet s’appuie sur plusieurs documents dédiés :
 
 À ce stade :
 - le backend dispose d’un ensemble de tests unitaires et d’intégration couvrant les services, les contrôleurs, la sécurité et la gestion des erreurs ;
-- le frontend dispose de tests unitaires sur le socle applicatif, de tests end-to-end Cypress sur les parcours critiques et de validations manuelles complémentaires ;
+- le frontend dispose de tests unitaires exécutés avec Vitest sur le socle applicatif, les services, le guard, l’interceptor et les principales pages métier ;
+- le frontend dispose également de tests end-to-end Cypress sur les parcours critiques ainsi que de validations manuelles complémentaires ;
 - les parcours critiques ont été validés manuellement côté frontend et backend.
 
 ### Performance
@@ -271,6 +280,14 @@ npm install
 ng serve
 ```
 
+Les vérifications principales côté frontend se font avec :
+
+```bash
+npm run test
+npm run test:coverage
+npm run cy:run
+```
+
 ### Environnement
 
 En développement local, le frontend communique avec le backend via le proxy Angular.
@@ -302,7 +319,8 @@ Le projet est actuellement un MVP fonctionnel.
 Les principales limites identifiées sont :
 
 - la couverture de branches backend reste perfectible ;
-- les tests frontend restent plus limités que les tests backend ;
+- les tests frontend ont été renforcés mais restent moins étendus que le dispositif backend ;
+- la couverture frontend est encore inégale selon les zones, en particulier sur certains templates et scénarios visuels ;
 - l’observabilité reste encore partielle ;
 - l’architecture de stockage reste volontairement simple pour un MVP ;
 - les performances mobiles du frontend restent en retrait par rapport au desktop.
