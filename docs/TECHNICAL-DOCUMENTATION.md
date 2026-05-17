@@ -171,6 +171,7 @@ Les endpoints principaux exposés par le backend sont :
 - `POST /api/files`
 - `GET /api/files`
 - `DELETE /api/files/{id}`
+- `POST /api/files/bulk-delete`
 
 ### Téléchargement public
 
@@ -207,7 +208,7 @@ Les routes sont séparées entre :
 
 ### Contrôle d’accès
 
-Certaines opérations métier sont soumises à une vérification de propriété, notamment la suppression de fichier.
+Certaines opérations métier sont soumises à une vérification de propriété, notamment la suppression unitaire et multiple de fichiers.
 
 ### Frontend
 
@@ -229,12 +230,13 @@ Le projet s’appuie sur plusieurs documents dédiés :
 - `SECURITY.md`
 - `PERF.md`
 - `MAINTENANCE.md`
+- `docs/AI-USAGE.md`
 
 ### Tests
 
 À ce stade :
-- le backend dispose d’un ensemble de tests unitaires et d’intégration couvrant les services, les contrôleurs, la sécurité et la gestion des erreurs ;
-- le frontend dispose de tests unitaires exécutés avec Vitest sur le socle applicatif, les services, le guard, l’interceptor et les principales pages métier ;
+- le backend dispose d’un ensemble de tests unitaires et d’intégration couvrant les services, les contrôleurs, la sécurité, la gestion des erreurs et la suppression multiple de fichiers ;
+- le frontend dispose de tests unitaires exécutés avec Vitest sur le socle applicatif, les services, le guard, l’interceptor et les principales pages métier, y compris la logique de sélection multiple et de suppression groupée dans l’historique ;
 - le frontend dispose également de tests end-to-end Cypress sur les parcours critiques ainsi que de validations manuelles complémentaires ;
 - les parcours critiques ont été validés manuellement côté frontend et backend.
 
@@ -299,19 +301,17 @@ Les instructions détaillées sont disponibles dans :
 
 ## 8. Utilisation de l’IA dans le développement
 
-L’intelligence artificielle a été utilisée comme assistant de développement sur une user story ciblée.
+L’intelligence artificielle a été utilisée comme assistant de développement sur des évolutions ciblées du projet, avec supervision humaine systématique.
 
-Le document dédié :
-`AI-USAGE.md`
+Le document dédié à l’usage de l’intelligence artificielle dans le développement est disponible dans :
+- `docs/AI-USAGE.md`
 
-précise :
+Il précise :
 
 - les tâches confiées à l’IA ;
 - le rôle de supervision humaine ;
 - les ajustements réalisés avant intégration ;
 - la traçabilité dans l’historique Git.
-
-L’IA a été utilisée comme outil d’assistance, et non comme mécanisme d’intégration automatique sans validation.
 
 ## 9. Limites actuelles et évolutions possibles
 
