@@ -2,6 +2,7 @@ package com.datashare.controller;
 
 import com.datashare.dto.file.FileUploadResponse;
 import com.datashare.dto.file.FileListItemResponse;
+import com.datashare.dto.file.BulkDeleteRequest;
 import com.datashare.service.FileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -61,6 +62,19 @@ public class FileController {
             @PathVariable Long id,
             Authentication authentication) throws IOException {
         fileService.deleteFile(id, authentication);
+        return ResponseEntity.noContent().build();
+    }
+
+    // Supprime plusieurs fichiers appartenant à l'utilisateur authentifié.
+    @Operation(summary = "Delete multiple files", description = "Supprime plusieurs fichiers appartenant à l'utilisateur authentifié")
+    @ApiResponse(responseCode = "204", description = "Fichiers supprimés avec succès")
+    @ApiResponse(responseCode = "401", description = "Non authentifié")
+    @ApiResponse(responseCode = "403", description = "Suppression interdite")
+    @PostMapping("/bulk-delete")
+    public ResponseEntity<Void> deleteFiles(
+            @RequestBody BulkDeleteRequest request,
+            Authentication authentication) throws IOException {
+        fileService.deleteFiles(request.fileIds(), authentication);
         return ResponseEntity.noContent().build();
     }
 }

@@ -1,6 +1,7 @@
 package com.datashare.controller;
 
 import com.datashare.dto.file.FileListItemResponse;
+import com.datashare.dto.file.BulkDeleteRequest;
 import com.datashare.dto.file.FileUploadResponse;
 import com.datashare.service.FileService;
 import org.junit.jupiter.api.Test;
@@ -80,5 +81,17 @@ class FileControllerTest {
         assertNull(response.getBody());
 
         verify(fileService).deleteFile(1L, authentication);
+    }
+
+    @Test
+    void shouldDeleteMultipleFiles() throws Exception {
+        BulkDeleteRequest request = new BulkDeleteRequest(List.of(1L, 2L, 3L));
+
+        ResponseEntity<Void> response = fileController.deleteFiles(request, authentication);
+
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        assertNull(response.getBody());
+
+        verify(fileService).deleteFiles(List.of(1L, 2L, 3L), authentication);
     }
 }

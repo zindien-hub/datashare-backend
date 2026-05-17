@@ -319,6 +319,42 @@ class FileServiceTest {
     }
 
     @Test
+    void shouldDeleteMultipleOwnedFiles() throws Exception {
+        User user = buildUser(1L, "test@datashare.com");
+
+        SharedFile file1 = buildSharedFile(5L, "doc-1.txt", "text/plain", 12L, "token-1");
+        file1.setStoredName("uuid_doc_1.txt");
+        file1.setOwner(user);
+
+        SharedFile file2 = buildSharedFile(6L, "doc-2.txt", "text/plain", 14L, "token-2");
+        file2.setStoredName("uuid_doc_2.txt");
+        file2.setOwner(user);
+
+        when(authentication.getName()).thenReturn("test@datashare.com");
+        when(userRepository.findByEmail("test@datashare.com")).thenReturn(Optional.of(user));
+        when(sharedFileRepository.findById(5L)).thenReturn(Optional.of(file1));
+        when(sharedFileRepository.findById(6L)).thenReturn(Optional.of(file2));
+
+        fileService.deleteFiles(List.of(5L, 6L), authentication);
+
+        verify(fileStorageService).delete("uuid_doc_1.txt");
+        verify(fileStorageService).delete("uuid_doc_2.txt");
+        verify(sharedFileRepository).delete(file1);
+        verify(sharedFileRepository).delete(file2);
+    }
+
+    @Test
+    void shouldRejectDeleteMultipleWhenNoFilesSelected() {
+        BadRequestException exception = assertThrows(
+                BadRequestException.class,
+                () -> fileService.deleteFiles(List.of(), authentication)
+        );
+
+        assertEquals("No files selected", exception.getMessage());
+        verifyNoInteractions(userRepository, sharedFileRepository, fileStorageService);
+    }
+
+    @Test
     void shouldDownloadFileByToken() throws Exception {
         SharedFile file = buildSharedFile(1L, "doc.txt", "text/plain", 10L, "token-1");
         file.setStoredName("uuid_doc.txt");
