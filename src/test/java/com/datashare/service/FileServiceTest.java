@@ -21,6 +21,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -201,9 +202,9 @@ class FileServiceTest {
 
         String savedName = captor.getValue().getOriginalName();
 
-        assertFalse(savedName.contains(" "),  "Les espaces doivent être remplacés par _");
-        assertFalse(savedName.contains("("),  "Les ( doivent être remplacées par _");
-        assertFalse(savedName.contains(")"),  "Les ) doivent être remplacées par _");
+        assertFalse(savedName.contains(" "), "Les espaces doivent être remplacés par _");
+        assertFalse(savedName.contains("("), "Les ( doivent être remplacées par _");
+        assertFalse(savedName.contains(")"), "Les ) doivent être remplacées par _");
 
         assertEquals("mon_rapport__v2_.pdf", savedName);
         assertTrue(captor.getValue().getStoredName().endsWith("_mon_rapport__v2_.pdf"));
@@ -316,6 +317,53 @@ class FileServiceTest {
         assertEquals("You are not allowed to delete this file", exception.getMessage());
         verify(fileStorageService, never()).delete(anyString());
         verify(sharedFileRepository, never()).delete(any());
+    }
+
+    @Test
+    void shouldDeleteMultipleOwnedFiles() throws Exception {
+        User user = buildUser(1L, "test@datashare.com");
+
+        SharedFile file1 = buildSharedFile(5L, "doc-1.txt", "text/plain", 12L, "token-1");
+        file1.setStoredName("uuid_doc_1.txt");
+        file1.setOwner(user);
+
+        SharedFile file2 = buildSharedFile(6L, "doc-2.txt", "text/plain", 14L, "token-2");
+        file2.setStoredName("uuid_doc_2.txt");
+        file2.setOwner(user);
+
+        when(authentication.getName()).thenReturn("test@datashare.com");
+        when(userRepository.findByEmail("test@datashare.com")).thenReturn(Optional.of(user));
+        when(sharedFileRepository.findById(5L)).thenReturn(Optional.of(file1));
+        when(sharedFileRepository.findById(6L)).thenReturn(Optional.of(file2));
+
+        fileService.deleteFiles(List.of(5L, 6L), authentication);
+
+        verify(fileStorageService).delete("uuid_doc_1.txt");
+        verify(fileStorageService).delete("uuid_doc_2.txt");
+        verify(sharedFileRepository).delete(file1);
+        verify(sharedFileRepository).delete(file2);
+    }
+
+    @Test
+    void shouldRejectDeleteMultipleWhenNoFilesSelected() {
+        BadRequestException exception = assertThrows(
+                BadRequestException.class,
+                () -> fileService.deleteFiles(List.of(), authentication)
+        );
+
+        assertEquals("No files selected", exception.getMessage());
+        verifyNoInteractions(userRepository, sharedFileRepository, fileStorageService);
+    }
+
+    @Test
+    void shouldRejectDeleteMultipleWhenSelectionContainsNullId() {
+        BadRequestException exception = assertThrows(
+                BadRequestException.class,
+                () -> fileService.deleteFiles(Arrays.asList(1L, null), authentication)
+        );
+
+        assertEquals("Invalid file selection", exception.getMessage());
+        verifyNoInteractions(userRepository, sharedFileRepository, fileStorageService);
     }
 
     @Test
