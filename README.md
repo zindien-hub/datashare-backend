@@ -10,7 +10,7 @@ Il gère :
 - l’upload de fichiers pour les utilisateurs connectés ;
 - l’historique des fichiers envoyés ;
 - le téléchargement public via un token ;
-- la suppression des fichiers par leur propriétaire ;
+- la suppression unitaire ou multiple des fichiers par leur propriétaire ;
 - la persistance PostgreSQL ;
 - le stockage local des fichiers uploadés ;
 - la documentation OpenAPI générée via springdoc.
@@ -126,6 +126,7 @@ Le répertoire `uploads/` n’est pas versionné dans Git car il contient des fi
 - `POST /api/files` : upload d’un fichier
 - `GET /api/files` : historique des fichiers de l’utilisateur connecté
 - `DELETE /api/files/{id}` : suppression d’un fichier appartenant à l’utilisateur connecté
+- `POST /api/files/bulk-delete` : suppression multiple de fichiers appartenant à l’utilisateur connecté
 
 ### Téléchargement public
 
@@ -145,13 +146,21 @@ Un fichier documentaire complémentaire peut également être conservé dans :
 
 - `docs/openapi.yaml`
 
+## Documentation complémentaire
+
+Les documents complémentaires du projet sont disponibles dans `docs/`, notamment :
+
+- `docs/TECHNICAL-DOCUMENTATION.md`
+- `docs/AI-USAGE.md`
+- `docs/openapi.yaml`
+
 ## Sécurité
 
 - authentification par JWT ;
 - mots de passe stockés hashés avec BCrypt ;
 - routes `/api/auth/**` et `/download/**` publiques ;
 - routes `/api/files/**` protégées ;
-- suppression limitée au propriétaire du fichier ;
+- suppression unitaire et multiple limitée au propriétaire des fichiers ;
 - validation des uploads avec contrôle du type et de la taille ;
 - réponses d’erreur homogènes via un gestionnaire global d’exceptions ;
 - expiration des liens de téléchargement après 7 jours ;

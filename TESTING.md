@@ -84,7 +84,7 @@ La commande suivante passe avec succès :
 
 Résultat observé :
 
-- **42 tests backend au vert**
+- **47 tests backend au vert**
 - **0 échec**
 - **0 erreur**
 - **0 test ignoré**
@@ -93,8 +93,8 @@ Résultat observé :
 
 Le backend atteint actuellement :
 
-- **76 % de couverture d’instructions**
-- **58 % de couverture de branches**
+- **77 % de couverture d’instructions**
+- **64 % de couverture de branches**
 
 Cela permet de dépasser le seuil minimal visé de **70 % sur les instructions**.
 
