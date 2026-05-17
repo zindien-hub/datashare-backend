@@ -1,8 +1,9 @@
 package com.datashare.controller;
 
-import com.datashare.dto.file.FileListItemResponse;
 import com.datashare.dto.file.BulkDeleteRequest;
+import com.datashare.dto.file.FileListItemResponse;
 import com.datashare.dto.file.FileUploadResponse;
+import com.datashare.exception.BadRequestException;
 import com.datashare.service.FileService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -14,6 +15,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 class FileControllerTest {
@@ -93,5 +96,15 @@ class FileControllerTest {
         assertNull(response.getBody());
 
         verify(fileService).deleteFiles(List.of(1L, 2L, 3L), authentication);
+    }
+
+    @Test
+    void shouldRejectBulkDeleteWhenRequestBodyIsNull() throws Exception {
+        BadRequestException exception = assertThrows(
+                BadRequestException.class,
+                () -> fileController.deleteFiles(null, authentication));
+
+        assertEquals("No files selected", exception.getMessage());
+        verify(fileService, never()).deleteFiles(anyList(), eq(authentication));
     }
 }

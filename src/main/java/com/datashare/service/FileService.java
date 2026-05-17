@@ -166,15 +166,21 @@ public class FileService {
                 fileId, file.getOriginalName(), email);
     }
 
-        public void deleteFiles(List<Long> fileIds, Authentication authentication) throws IOException {
-                if (fileIds == null || fileIds.isEmpty()) {
-                        throw new BadRequestException("No files selected");
-                }
-
-                for (Long fileId : fileIds) {
-                        deleteFile(fileId, authentication);
-                }
+    public void deleteFiles(List<Long> fileIds, Authentication authentication) throws IOException {
+        if (fileIds == null || fileIds.isEmpty()) {
+            throw new BadRequestException("No files selected");
         }
+
+        if (fileIds.stream().anyMatch(id -> id == null)) {
+            throw new BadRequestException("Invalid file selection");
+        }
+
+        log.info("Suppression multiple demandée — {} fichier(s)", fileIds.size());
+
+        for (Long fileId : fileIds) {
+            deleteFile(fileId, authentication);
+        }
+    }
 
     private void validateUpload(MultipartFile file) {
         if (file == null || file.isEmpty()) {

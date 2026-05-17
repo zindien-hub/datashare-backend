@@ -21,6 +21,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -201,9 +202,9 @@ class FileServiceTest {
 
         String savedName = captor.getValue().getOriginalName();
 
-        assertFalse(savedName.contains(" "),  "Les espaces doivent être remplacés par _");
-        assertFalse(savedName.contains("("),  "Les ( doivent être remplacées par _");
-        assertFalse(savedName.contains(")"),  "Les ) doivent être remplacées par _");
+        assertFalse(savedName.contains(" "), "Les espaces doivent être remplacés par _");
+        assertFalse(savedName.contains("("), "Les ( doivent être remplacées par _");
+        assertFalse(savedName.contains(")"), "Les ) doivent être remplacées par _");
 
         assertEquals("mon_rapport__v2_.pdf", savedName);
         assertTrue(captor.getValue().getStoredName().endsWith("_mon_rapport__v2_.pdf"));
@@ -351,6 +352,17 @@ class FileServiceTest {
         );
 
         assertEquals("No files selected", exception.getMessage());
+        verifyNoInteractions(userRepository, sharedFileRepository, fileStorageService);
+    }
+
+    @Test
+    void shouldRejectDeleteMultipleWhenSelectionContainsNullId() {
+        BadRequestException exception = assertThrows(
+                BadRequestException.class,
+                () -> fileService.deleteFiles(Arrays.asList(1L, null), authentication)
+        );
+
+        assertEquals("Invalid file selection", exception.getMessage());
         verifyNoInteractions(userRepository, sharedFileRepository, fileStorageService);
     }
 

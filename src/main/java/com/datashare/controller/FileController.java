@@ -1,9 +1,14 @@
 package com.datashare.controller;
 
-import com.datashare.dto.file.FileUploadResponse;
-import com.datashare.dto.file.FileListItemResponse;
 import com.datashare.dto.file.BulkDeleteRequest;
+import com.datashare.dto.file.FileListItemResponse;
+import com.datashare.dto.file.FileUploadResponse;
+import com.datashare.exception.BadRequestException;
 import com.datashare.service.FileService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,11 +18,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
-
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/files")
@@ -68,12 +68,17 @@ public class FileController {
     // Supprime plusieurs fichiers appartenant à l'utilisateur authentifié.
     @Operation(summary = "Delete multiple files", description = "Supprime plusieurs fichiers appartenant à l'utilisateur authentifié")
     @ApiResponse(responseCode = "204", description = "Fichiers supprimés avec succès")
+    @ApiResponse(responseCode = "400", description = "Requête invalide")
     @ApiResponse(responseCode = "401", description = "Non authentifié")
     @ApiResponse(responseCode = "403", description = "Suppression interdite")
     @PostMapping("/bulk-delete")
     public ResponseEntity<Void> deleteFiles(
             @RequestBody BulkDeleteRequest request,
             Authentication authentication) throws IOException {
+        if (request == null) {
+            throw new BadRequestException("No files selected");
+        }
+
         fileService.deleteFiles(request.fileIds(), authentication);
         return ResponseEntity.noContent().build();
     }
