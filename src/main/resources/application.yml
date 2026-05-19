@@ -37,3 +37,5 @@ app:
       - text/plain
   cleanup:
     expired-files-cron: "0 0 * * * *"
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200}

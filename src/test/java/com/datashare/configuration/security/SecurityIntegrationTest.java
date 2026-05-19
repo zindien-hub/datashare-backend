@@ -78,6 +78,13 @@ class SecurityIntegrationTest {
     }
 
     @Test
+    void shouldRejectFilesEndpointWithInvalidJwt() throws Exception {
+        mockMvc.perform(get("/api/files")
+                        .header("Authorization", "Bearer invalid.jwt.token"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     @WithMockUser(username = "test@datashare.com")
     void shouldAllowFilesEndpointWithAuthentication() throws Exception {
         when(fileService.getUserFiles(any())).thenReturn(List.of());
@@ -90,6 +97,13 @@ class SecurityIntegrationTest {
     @Test
     void shouldRejectDeleteEndpointWithoutAuthentication() throws Exception {
         mockMvc.perform(delete("/api/files/1"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void shouldRejectDeleteEndpointWithInvalidJwt() throws Exception {
+        mockMvc.perform(delete("/api/files/1")
+                        .header("Authorization", "Bearer invalid.jwt.token"))
                 .andExpect(status().isUnauthorized());
     }
 
