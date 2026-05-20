@@ -105,55 +105,68 @@ Les tailles testées ont été choisies pour couvrir plusieurs ordres de grandeu
 
 ## B. Résultats du scénario de stress court (jusqu’à 40 VUs, sans `sleep(1)`)
 
+Dernière exécution : mai 2026, après les corrections de sécurité backend et l’ajout du champ `size` dans la réponse d’upload.
+
 ### Fichier 1 KB
-- moyenne : **44.51 ms**
-- médiane : **23.63 ms**
-- p90 : **47.05 ms**
-- p95 : **66.06 ms**
-- maximum : **2.53 s**
+- moyenne : **71.28 ms**
+- médiane : **33.56 ms**
+- p90 : **78.84 ms**
+- p95 : **131.04 ms**
+- maximum : **17.99 s**
 - taux d’échec HTTP : **0.00 %**
 - checks réussis : **100 %**
-- débit observé : **516 req/s**
+- débit observé : **321.44 req/s**
+- requêtes complétées : **16 073**
 
 ### Fichier 1 MB
-- moyenne : **112.86 ms**
-- médiane : **40.55 ms**
-- p90 : **134.43 ms**
-- p95 : **684.37 ms**
-- maximum : **7.09 s**
+- moyenne : **100.07 ms**
+- médiane : **44.44 ms**
+- p90 : **295.44 ms**
+- p95 : **390.04 ms**
+- maximum : **4.13 s**
 - taux d’échec HTTP : **0.00 %**
 - checks réussis : **100 %**
-- débit observé : **203 req/s**
+- débit observé : **227.35 req/s**
+- requêtes complétées : **11 369**
 
 ### Fichier 4 MB
-- moyenne : **204.92 ms**
-- médiane : **94.88 ms**
-- p90 : **458.56 ms**
-- p95 : **895.41 ms**
-- maximum : **19.25 s**
+- moyenne : **137.96 ms**
+- médiane : **99.65 ms**
+- p90 : **215.66 ms**
+- p95 : **267.41 ms**
+- maximum : **30.09 s**
 - taux d’échec HTTP : **0.00 %**
 - checks réussis : **100 %**
-- débit observé : **102 req/s**
+- débit observé : **146.66 req/s**
+- requêtes complétées : **8 242**
 
 ## Interprétation
 
 Les résultats montrent que :
 
 - l’endpoint `POST /api/files` reste stable en environnement local sur plusieurs tailles de fichiers ;
-- aucune erreur n’a été observée sur les scénarios retenus ;
-- l’augmentation de la taille des fichiers entraîne une hausse cohérente de la latence et une baisse du débit ;
-- même dans le scénario de stress court jusqu’à 40 VUs, les seuils définis ont été respectés.
+- aucune erreur HTTP n’a été observée sur les scénarios retenus ;
+- les checks k6 sont réussis à **100 %** sur les trois tailles de fichiers ;
+- les seuils définis pour le scénario de stress court sont respectés :
+  - `http_req_failed < 10 %` ;
+  - `p95 < 4000 ms` ;
+  - `checks > 90 %` ;
+- l’augmentation de la taille des fichiers entraîne une baisse cohérente du débit observé :
+  - environ **321 req/s** pour 1 KB ;
+  - environ **227 req/s** pour 1 MB ;
+  - environ **147 req/s** pour 4 MB.
 
 Le premier scénario confirme la stabilité sous charge modérée.
 
-Le second scénario apporte une mesure plus significative de robustesse locale, en supprimant le plafonnement artificiel introduit par `sleep(1)` et en augmentant nettement la concurrence.
+Le second scénario apporte une mesure plus significative de robustesse locale, en supprimant le plafonnement artificiel introduit par `sleep(1)` et en augmentant nettement la concurrence jusqu’à **40 VUs**.
 
-Quelques pics isolés de latence ont toutefois été observés, notamment :
-- **7.42 s** sur le scénario 1 MB modéré ;
-- **7.09 s** sur le scénario 1 MB en stress court ;
-- **19.25 s** sur le scénario 4 MB en stress court.
+Quelques pics isolés de latence restent observables :
 
-Ces pics restent ponctuels et n’ont pas entraîné d’erreur, mais ils montrent que l’environnement local n’offre pas une stabilité parfaitement linéaire sous charge.
+- **17.99 s** sur le scénario 1 KB ;
+- **4.13 s** sur le scénario 1 MB ;
+- **30.09 s** sur le scénario 4 MB.
+
+Ces pics restent ponctuels et n’ont pas entraîné d’erreur HTTP ni d’échec de check. Ils confirment cependant que l’environnement local n’offre pas une stabilité parfaitement linéaire sous charge, notamment lorsque l’écriture disque est fortement sollicitée.
 
 ## Ajustements techniques réalisés pendant les tests
 
@@ -183,7 +196,9 @@ Ces mesures ont été obtenues dans un cadre encore limité :
 - pas de métriques système détaillées (CPU, mémoire, I/O disque) ;
 - pas de comparaison sur plusieurs machines ou plusieurs configurations ;
 - pas de campagne longue durée ;
-- pas de test à + 5 MB, car cela sortirait du périmètre nominal actuellement retenu pour l’application.
+- pas de test à + 5 MB, car cela sortirait du périmètre nominal actuellement retenu pour l’application;
+- les tests de stress génèrent un grand nombre de fichiers en base et sur disque ; 
+- un nettoyage manuel ou automatisé est nécessaire après campagne.
 
 Les résultats doivent donc être interprétés comme une validation sérieuse de la robustesse locale du MVP, et non comme une garantie de performance à grande échelle.
 
@@ -196,4 +211,6 @@ Les améliorations envisageables sont :
 - comparer plusieurs profils de charge et plusieurs environnements ;
 - mesurer l’impact du stockage local sur des volumes plus importants ;
 - compléter avec une stratégie d’observabilité plus riche (logs structurés, corrélation, métriques techniques) ;
-- réévaluer la limite d’upload si le besoin métier évolue.
+- réévaluer la limite d’upload si le besoin métier évolue;
+- les tests de stress génèrent un grand nombre de fichiers en base et sur disque ; 
+- un nettoyage manuel ou automatisé est nécessaire après campagne.

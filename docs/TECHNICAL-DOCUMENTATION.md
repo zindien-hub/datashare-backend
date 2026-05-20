@@ -25,12 +25,15 @@ Le frontend Angular est responsable :
 Le backend Spring Boot est responsable :
 - de l’authentification utilisateur ;
 - de la génération et validation des JWT ;
+- de la gestion des JWT invalides, expirés ou malformés ;
 - de la logique métier autour des fichiers ;
+- de la validation serveur des fichiers téléversés ;
 - de la persistance en base PostgreSQL ;
 - du stockage local des fichiers ;
-- de l’exposition des endpoints REST;
+- de l’exposition des endpoints REST ;
 - de l’exécution des migrations de base de données via Flyway ;
 - de la purge planifiée des fichiers expirés ;
+- de la configuration CORS externalisée.
 
 ### Base de données
 
@@ -53,7 +56,7 @@ Les fichiers téléversés sont stockés sur disque dans le répertoire défini 
 
 Le diagramme d’architecture est fourni dans :
 
-- `docs/schema_architecture_simple.pdf`
+- `docs/architecture-datashare.png`
 
 ## 2. Choix technologiques justifiés
 
@@ -104,19 +107,22 @@ Le JWT a été retenu pour :
 
 Docker Compose est utilisé pour simplifier le démarrage local de PostgreSQL et rendre l’environnement plus reproductible.
 
-### Outils de test et qualité
+### Outils de test, qualité et sécurité
 
 Les outils retenus sont :
 - Maven et Spring Boot Test côté backend ;
 - H2 pour les tests backend ;
 - JaCoCo pour la couverture backend ;
+- OWASP Dependency Check pour le scan des dépendances backend ;
 - k6 pour les mesures de performance backend ;
 - Angular TestBed avec exécution via Vitest côté frontend ;
 - Cypress pour les tests end-to-end frontend ;
 - Lighthouse pour les audits de performance frontend.
 
-Côté frontend, Angular 21 s’appuie sur Vitest pour l’exécution des tests unitaires.
+Côté frontend, Angular s’appuie sur Vitest pour l’exécution des tests unitaires.
 Les tests utilisent `TestBed` pour l’intégration avec l’écosystème Angular, tandis que l’exécution et la couverture sont réalisées via `ng test` et le moteur Vitest/V8.
+
+Le scan OWASP Dependency Check permet d’identifier les vulnérabilités connues sur les dépendances directes et transitives du backend. Les résultats sont documentés dans `SECURITY.md`.
 
 ## 3. Modèle de données
 
@@ -146,8 +152,11 @@ Champs principaux :
 - `password_hash`
 - `created_at`
 - `updated_at`
+- `owner_id`
 
 Cette entité représente un fichier partagé et ses métadonnées.
+
+Le champ `password_hash` correspond à l’anticipation technique de l’US09, qui concerne la protection optionnelle d’un fichier par mot de passe. Cette fonctionnalité n’est pas livrée dans le périmètre MVP actuel.
 
 ### Relation
 
@@ -155,7 +164,7 @@ Cette entité représente un fichier partagé et ses métadonnées.
 - un fichier partagé appartient à `1` utilisateur.
 
 Le modèle de données est fourni dans :
-- `docs/ShareFiles_MCD.png`
+- `docs/mcd-datashare.png`
 
 ## 4. Documentation des endpoints principaux
 
@@ -163,19 +172,27 @@ Les endpoints principaux exposés par le backend sont :
 
 ### Authentification
 
-- `POST /api/auth/register`
-- `POST /api/auth/login`
+- `POST /api/auth/register` : création d’un compte utilisateur ;
+- `POST /api/auth/login` : connexion utilisateur et génération d’un JWT.
 
 ### Gestion des fichiers authentifiés
 
-- `POST /api/files`
-- `GET /api/files`
-- `DELETE /api/files/{id}`
-- `POST /api/files/bulk-delete`
+- `POST /api/files` : upload d’un fichier par un utilisateur connecté ;
+- `GET /api/files` : récupération de l’historique de l’utilisateur connecté ;
+- `DELETE /api/files/{id}` : suppression d’un fichier appartenant à l’utilisateur connecté ;
+- `POST /api/files/bulk-delete` : suppression multiple de fichiers appartenant à l’utilisateur connecté.
+
+La réponse d’upload contient notamment :
+- l’identifiant du fichier ;
+- le nom original ;
+- la taille du fichier ;
+- le token public de téléchargement ;
+- l’URL de téléchargement ;
+- la date d’expiration.
 
 ### Téléchargement public
 
-- `GET /download/{token}`
+- `GET /download/{token}` : téléchargement public d’un fichier via son token.
 
 Une documentation OpenAPI est exposée dynamiquement par le backend via springdoc-openapi.
 
@@ -193,9 +210,17 @@ Un fichier documentaire est également conservé dans :
 
 L’authentification repose sur un JWT généré lors de la connexion.
 
+Le backend fonctionne en mode stateless :
+- pas de session serveur ;
+- JWT transmis par le frontend dans l’en-tête `Authorization: Bearer <token>` ;
+- authentification HTTP Basic désactivée ;
+- formulaire de login Spring Security désactivé.
+
+Les JWT invalides, expirés ou malformés sont gérés sans provoquer d’erreur serveur. Les routes protégées répondent alors avec un statut `401 Unauthorized`.
+
 ### Protection des mots de passe
 
-Les mots de passe sont hachés avec BCrypt avant stockage en base.
+Les mots de passe utilisateurs sont hachés avec BCrypt avant stockage en base.
 
 ### Gestion des routes
 
@@ -203,6 +228,9 @@ Les routes sont séparées entre :
 - routes publiques :
   - `/api/auth/**`
   - `/download/**`
+  - `/v3/api-docs/**`
+  - `/swagger-ui/**`
+  - `/swagger-ui.html`
 - routes protégées :
   - `/api/files/**`
 
@@ -210,9 +238,36 @@ Les routes sont séparées entre :
 
 Certaines opérations métier sont soumises à une vérification de propriété, notamment la suppression unitaire et multiple de fichiers.
 
+Le backend distingue :
+- `401 Unauthorized` lorsqu’un utilisateur n’est pas authentifié ou présente un JWT invalide ;
+- `403 Forbidden` lorsqu’un utilisateur authentifié tente d’accéder à une ressource qui ne lui appartient pas.
+
+### Sécurité des fichiers
+
+Les fichiers téléversés sont contrôlés côté backend :
+- rejet des fichiers vides ;
+- contrôle de la taille maximale ;
+- contrôle du type MIME ;
+- nettoyage du nom original ;
+- stockage sous un nom technique basé sur un UUID ;
+- vérification du chemin de stockage pour limiter le risque de path traversal.
+
+Les fichiers ne sont pas stockés en clair sous leur nom original. Ils sont stockés sous un nom technique dans `UPLOAD_DIR`, tandis que l’accès public repose sur un token non prédictible et une date d’expiration.
+
+### CORS
+
+La configuration CORS est explicite et externalisée via la variable :
+
+```env
+APP_CORS_ALLOWED_ORIGINS=http://localhost:4200
+```
+
+Cette valeur peut être adaptée par environnement sans modification du code Java.
+
 ### Frontend
 
 Côté frontend :
+
 - un guard protège les routes privées ;
 - un interceptor injecte automatiquement le JWT dans les appels API protégés ;
 - une réponse `401` hors endpoints publics entraîne la suppression de la session locale ;
@@ -220,6 +275,7 @@ Côté frontend :
 - un message explicatif est affiché lorsque la session a expiré.
 
 Les détails sont documentés dans :
+
 - `SECURITY.md`
 
 ## 6. Qualité, tests et maintenance
@@ -235,21 +291,37 @@ Le projet s’appuie sur plusieurs documents dédiés :
 ### Tests
 
 À ce stade :
-- le backend dispose d’un ensemble de tests unitaires et d’intégration couvrant les services, les contrôleurs, la sécurité, la gestion des erreurs et la suppression multiple de fichiers ;
-- le frontend dispose de tests unitaires exécutés avec Vitest sur le socle applicatif, les services, le guard, l’interceptor et les principales pages métier, y compris la logique de sélection multiple et de suppression groupée dans l’historique ;
+- le backend dispose d’un ensemble de tests unitaires et d’intégration couvrant les services, les contrôleurs, la sécurité, la gestion des erreurs, la suppression multiple de fichiers, la validation d’upload et les JWT invalides ;
+- le frontend dispose de tests unitaires exécutés avec Vitest sur le socle applicatif, les services, le guard, l’interceptor et les principales pages métier ;
+- le frontend couvre notamment la validation des fichiers côté upload, le formatage des tailles, la logique de sélection multiple et la suppression groupée dans l’historique ;
 - le frontend dispose également de tests end-to-end Cypress sur les parcours critiques ainsi que de validations manuelles complémentaires ;
 - les parcours critiques ont été validés manuellement côté frontend et backend.
 
+Les chiffres de tests et de couverture sont centralisés dans :
+- `TESTING.md`
+
 ### Performance
 
-Une première mesure de performance backend a été réalisée avec k6 sur l’endpoint `POST /api/files`.
+Des mesures de performance backend ont été réalisées avec k6 sur l’endpoint `POST /api/files`.
+
+Les scénarios couvrent plusieurs tailles de fichiers et un scénario de stress court jusqu’à 40 utilisateurs virtuels.
+
+Les résultats détaillés sont centralisés dans :
+- `PERF.md`
 
 ### Maintenance
 
 La maintenance est documentée séparément pour faciliter :
 - les évolutions ;
 - les corrections ;
-- la compréhension des zones sensibles.
+- la compréhension des zones sensibles ;
+- le suivi des dépendances ;
+- le suivi des vulnérabilités ;
+- la gestion des migrations Flyway ;
+- la cohérence entre base de données et stockage local.
+
+Les règles de maintenance sont décrites dans :
+- `MAINTENANCE.md`
 
 ## 7. Processus d’installation et d’exécution
 
@@ -261,6 +333,19 @@ Le backend nécessite :
 - Docker ;
 - Docker Compose ;
 - un fichier `.env`.
+
+Le fichier `.env` doit être créé à partir de `.env.example`.
+
+Variables principales :
+- `DB_HOST`
+- `DB_PORT`
+- `DB_NAME`
+- `DB_USER`
+- `DB_PASSWORD`
+- `JWT_SECRET`
+- `JWT_EXPIRATION_MS`
+- `UPLOAD_DIR`
+- `APP_CORS_ALLOWED_ORIGINS`
 
 Le lancement local se fait avec :
 
@@ -293,7 +378,12 @@ npm run cy:run
 ### Environnement
 
 En développement local, le frontend communique avec le backend via le proxy Angular.
-La configuration de production repose sur des chemins relatifs, afin d’éviter toute dépendance à une URL `localhost` codée en dur.
+
+Côté backend, les origines CORS autorisées sont externalisées via `APP_CORS_ALLOWED_ORIGINS`.
+
+Côté frontend, les URLs backend sont centralisées dans la configuration d’environnement et le proxy de développement, afin d’éviter la dispersion d’URLs codées en dur dans le code applicatif.
+
+En production, les valeurs devront être adaptées au domaine réel du frontend et au mode de déploiement retenu.
 
 Les instructions détaillées sont disponibles dans :
 - `README.md` du repo backend
@@ -311,6 +401,7 @@ Il précise :
 - les tâches confiées à l’IA ;
 - le rôle de supervision humaine ;
 - les ajustements réalisés avant intégration ;
+- les limites de l’assistance IA ;
 - la traçabilité dans l’historique Git.
 
 ## 9. Limites actuelles et évolutions possibles
@@ -318,17 +409,23 @@ Il précise :
 Le projet est actuellement un MVP fonctionnel.
 Les principales limites identifiées sont :
 
-- la couverture de branches backend reste perfectible ;
-- les tests frontend ont été renforcés mais restent moins étendus que le dispositif backend ;
-- la couverture frontend est encore inégale selon les zones, en particulier sur certains templates et scénarios visuels ;
+- la couverture de branches reste perfectible ;
+- la pagination de l’historique des fichiers n’est pas encore mise en place ;
+- le rate limiting de l’endpoint de connexion n’est pas encore implémenté ;
+- le JWT est stocké côté frontend en `localStorage`, solution simple pour le MVP mais à durcir pour une mise en production ;
+- Swagger UI devra être désactivé ou protégé hors environnement de développement ;
 - l’observabilité reste encore partielle ;
 - l’architecture de stockage reste volontairement simple pour un MVP ;
-- les performances mobiles du frontend restent en retrait par rapport au desktop.
+- les performances mobiles du frontend restent en retrait par rapport au desktop ;
+- la protection optionnelle des fichiers par mot de passe, prévue comme évolution fonctionnelle, n’est pas livrée dans le MVP.
 
 Les évolutions possibles incluent :
 
-- augmentation de la couverture de tests ;
-- amélioration de la gestion des exceptions ;
-- validation plus stricte des fichiers téléversés ;
-- amélioration de la robustesse sécurité ;
-- enrichissement des fonctionnalités de partage sécurisé.
+- ajout d’une pagination sur `GET /api/files` ;
+- ajout d’un rate limiting sur `POST /api/auth/login` ;
+- durcissement de la stratégie de stockage du JWT côté frontend ;
+- désactivation ou protection de Swagger UI en production ;
+- automatisation de la veille dépendances avec Dependabot, Renovate ou une étape CI ;
+- amélioration de l’observabilité avec logs structurés, identifiant de corrélation et métriques applicatives ;
+- évolution du stockage local vers un stockage objet externe ;
+- ajout d’une protection optionnelle par mot de passe pour les liens de téléchargement.
