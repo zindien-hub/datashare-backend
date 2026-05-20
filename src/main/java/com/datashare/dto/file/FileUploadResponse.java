@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 public record FileUploadResponse(
         Long id,
         String originalName,
+        Long size,
         String downloadToken,
         String downloadUrl,
         LocalDateTime expiresAt

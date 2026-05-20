@@ -74,6 +74,7 @@ public class FileService {
         return new FileUploadResponse(
                 saved.getId(),
                 saved.getOriginalName(),
+                saved.getSize(),
                 saved.getDownloadToken(),
                 "/download/" + saved.getDownloadToken(),
                 saved.getExpiresAt()
