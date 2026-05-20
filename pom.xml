@@ -54,6 +54,7 @@
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
+			<version>42.7.11</version>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
@@ -192,6 +193,20 @@
 						</goals>
 					</execution>
 				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.owasp</groupId>
+				<artifactId>dependency-check-maven</artifactId>
+				<version>12.1.0</version>
+				<configuration>
+					<formats>
+						<format>HTML</format>
+						<format>JSON</format>
+					</formats>
+					<outputDirectory>${project.basedir}/docs/security/dependency-check</outputDirectory>
+					<ossindexAnalyzerEnabled>false</ossindexAnalyzerEnabled>
+					<failBuildOnCVSS>11</failBuildOnCVSS>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
