@@ -32,6 +32,7 @@ class FileControllerTest {
         FileUploadResponse uploadResponse = new FileUploadResponse(
                 1L,
                 "document.txt",
+                120L,
                 "token-123",
                 "/download/token-123",
                 LocalDateTime.now().plusDays(7)
@@ -44,6 +45,7 @@ class FileControllerTest {
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals("document.txt", response.getBody().originalName());
+        assertEquals(120L, response.getBody().size());
         assertEquals("token-123", response.getBody().downloadToken());
 
         verify(fileService).upload(multipartFile, authentication);

@@ -95,6 +95,7 @@ class FileServiceTest {
         assertNotNull(response);
         assertEquals(10L, response.id());
         assertEquals("document.txt", response.originalName());
+        assertEquals(100L, response.size());
         assertNotNull(response.downloadToken());
         assertTrue(response.downloadUrl().startsWith("/download/"));
         assertNotNull(response.expiresAt());
